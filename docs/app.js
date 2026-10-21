@@ -1,5 +1,34 @@
 (() => {
   'use strict';
+  const learningPanel = document.querySelector('#learning .learning-panel');
+  if (learningPanel) {
+    const videoStyles = document.createElement('link');
+    videoStyles.rel = 'stylesheet';
+    videoStyles.href = 'video-demo.css';
+    document.head.append(videoStyles);
+    learningPanel.insertAdjacentHTML('afterend', `
+      <div class="video-demo" aria-labelledby="video-demo-title">
+        <div class="video-demo-copy">
+          <div class="eyebrow">ПРОТОТИП ВИДЕОУРОКА</div>
+          <h3 id="video-demo-title">Так сложное становится понятным.</h3>
+          <p>Фрагмент показывает будущий стиль объяснений: наглядная анимация, короткие смысловые блоки и спокойная подача материала.</p>
+          <ul>
+            <li>Без перегруженных слайдов</li>
+            <li>Можно пересматривать в своём темпе</li>
+            <li>Доступно с компьютера и телефона</li>
+          </ul>
+          <span>Демонстрационный материал · финальная версия может отличаться</span>
+        </div>
+        <div class="video-demo-player">
+          <video autoplay muted loop playsinline controls preload="metadata" aria-label="Прототип анимации для учебного курса">
+            <source src="assets/video/animation-prototype.mov">
+            Ваш браузер не поддерживает встроенное видео.
+            <a href="assets/video/animation-prototype.mov">Скачать прототип</a>.
+          </video>
+          <span class="video-demo-badge"><i></i> ПРОТОТИП АНИМАЦИИ</span>
+        </div>
+      </div>`);
+  }
   const plans = {
     online: { name: 'EASY Онлайн', price: 27500, description: 'Теория онлайн, учебные тесты и внутренний итоговый экзамен.' },
     practice: { name: 'EASY Практика', price: 45000, description: 'Онлайн-теория и 5 групповых практических занятий в Павлодаре.' },
