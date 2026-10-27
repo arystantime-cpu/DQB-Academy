@@ -21,9 +21,9 @@
         </div>
         <div class="video-demo-player">
           <video autoplay muted loop playsinline controls preload="metadata" aria-label="Прототип анимации для учебного курса">
-            <source src="assets/video/animation-prototype.mov">
+            <source src="assets/video/intro-timeline-1.mp4" type="video/mp4">
             Ваш браузер не поддерживает встроенное видео.
-            <a href="assets/video/animation-prototype.mov">Скачать прототип</a>.
+            <a href="assets/video/intro-timeline-1.mp4">Скачать прототип</a>.
           </video>
           <span class="video-demo-badge"><i></i> ПРОТОТИП АНИМАЦИИ</span>
         </div>
