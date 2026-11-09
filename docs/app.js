@@ -163,7 +163,7 @@
     if (section.dataset.loading) return;
     section.dataset.loading = '1';
     const script = document.createElement('script');
-    script.src = 'assets/anatomy/pq650-anatomy.js';
+    script.src = 'assets/anatomy/anatomy-3d.js';
     script.async = true;
     script.onerror = () => section.classList.add('anatomy--static');
     document.body.append(script);

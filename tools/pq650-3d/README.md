@@ -1,13 +1,16 @@
-# PQ650 3D — исходники блока «Устройство дрона»
+# Блок «Устройство дрона» — исходники
 
-Стилизованная 3D-модель PQ650, собранная кодом (Three.js r160), и сцена с разборкой по прокрутке.
+Сейчас на сайте: `src/mini3.js` — разборка 3D-модели «DJI 3 mini Pro» (автор wishmaster88, Sketchfab, CC BY 4.0).
+Модель сжата (meshopt + WebP) в `mini3-optimized.glb` и встроена в `docs/assets/anatomy/mini3-model.js` в base64,
+чтобы сайт работал и при открытии `index.html` двойным щелчком.
 
-- `src/model.js` — модель: корпус, панели, аккумулятор, полётный контроллер, лучи, моторы, пропеллеры, подвес, опоры.
-- `src/anatomy.js` — сцена: прокрутка → разборка, вращение мышью/пальцем, номер активной детали.
+Пересборка (нужен Node.js):
 
-Сборка (нужен Node.js):
+    npm install three@0.160.0 esbuild@0.20.2
+    npx esbuild src/mini3.js --bundle --minify --format=iife --target=es2019 --legal-comments=none --outfile=../../docs/assets/anatomy/anatomy-3d.js
 
-    npm install
-    npx esbuild src/anatomy.js --bundle --minify --format=iife --target=es2019 --legal-comments=none --outfile=../../docs/assets/anatomy/pq650-anatomy.js
+Узлы модели раскладываются на группы в `classify()` по именам из файла:
+JY* — пропеллеры, *_电机 — моторы, xianquan*/空白* — статоры с обмотками, лучи, верхний корпус,
+аккумулятор, датчики обзора, камера на подвесе.
 
-Когда появится CAD/GLB-модель, её можно загрузить через GLTFLoader в `anatomy.js` вместо `buildPQ650()`, сохранив те же имена узлов (props, motors, arms, cover, battery, fc, sides, gimbal, gear).
+`src/model.js` + `src/anatomy.js` — прежняя упрощённая модель PQ650, собранная кодом (не используется).

@@ -65,3 +65,8 @@
 .anatomy--static .anatomy-part-text{position:static;width:auto;height:auto;clip:auto;white-space:normal;color:#a9bdca;font-size:12px;padding:0 0 14px 36px;margin-top:-4px}
 .anatomy--static .anatomy-note{position:static;display:block;margin-top:16px}
 @media(prefers-reduced-motion:reduce){.anatomy-mouse:after{animation:none}}
+.anatomy-loader{display:none;position:absolute;left:62%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border:2px solid #ffffff22;border-top-color:var(--a-orange);border-radius:50%;animation:anatomy-spin .9s linear infinite}
+.anatomy--loading .anatomy-loader{display:block}
+@keyframes anatomy-spin{to{transform:rotate(360deg)}}
+.anatomy-note a{color:#8fb3c8;text-decoration:underline;text-underline-offset:2px}
+@media(max-width:650px){.anatomy-loader{left:50%}}
