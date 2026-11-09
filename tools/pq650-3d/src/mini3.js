@@ -5,7 +5,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
-const MODEL_SRC = 'assets/anatomy/mini3-model.js'; // GLB embedded as base64 (works from file:// too)
+const MODEL_SRC = 'assets/anatomy/mini3-model.js?v=20261109b'; // GLB embedded as base64 (works from file:// too)
 const ARMS = ['LF', 'RF', 'LB', 'RB'];
 
 const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
