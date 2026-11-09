@@ -1,0 +1,67 @@
+/* ==========================================================================
+   «Устройство дрона» — scroll-driven 3D exploded view of PQ650
+   ========================================================================== */
+.anatomy{--a-bg:#08131d;--a-ink:#eaf2f7;--a-muted:#8ea6b6;--a-line:#ffffff1a;--a-orange:#f28a2e;position:relative;height:460vh;background:radial-gradient(120% 80% at 70% 45%,#15314a 0%,#0b1a28 45%,var(--a-bg) 80%);color:var(--a-ink);margin-top:56px}
+.anatomy-sticky{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden}
+.anatomy-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:pan-y;cursor:grab;opacity:0;transition:opacity .6s}
+.anatomy.is-dragging .anatomy-canvas{cursor:grabbing}
+.anatomy--live .anatomy-canvas{opacity:1}
+.anatomy-poster{display:none}
+.anatomy-poster img{width:100%;height:100%;object-fit:cover;object-position:62% 50%}
+.anatomy-ui{position:relative;height:100%;display:grid;grid-template-columns:minmax(260px,330px) 1fr;grid-template-rows:1fr auto;gap:0 40px;padding:calc(91px + 4vh) 0 5vh;pointer-events:none}
+.anatomy-ui>*{pointer-events:auto}
+.anatomy-copy{grid-row:1/3;align-self:center}
+.anatomy .eyebrow{color:#5fd0ee}
+.anatomy h2{color:var(--a-ink);font-size:clamp(30px,2.9vw,42px)}
+.anatomy-parts{list-style:none;margin:30px 0 0;padding:0;counter-reset:none;border-top:1px solid var(--a-line)}
+.anatomy-parts li{border-bottom:1px solid var(--a-line)}
+.anatomy-parts button{display:flex;align-items:center;gap:16px;width:100%;min-height:40px;padding:8px 0;border:0;background:none;color:var(--a-muted);text-align:left;font-size:13px;transition:color .25s}
+.anatomy-parts button span{font-size:10px;letter-spacing:.12em;color:#5d7486;width:20px;transition:color .25s}
+.anatomy-parts button b{font-weight:650}
+.anatomy-parts button:hover{color:var(--a-ink)}
+.anatomy-parts li.is-active button{color:#fff}
+.anatomy-parts li.is-active button span{color:var(--a-orange)}
+.anatomy-parts li.is-active button b:after{content:'';display:inline-block;width:6px;height:6px;margin-left:10px;border-radius:50%;background:var(--a-orange);box-shadow:0 0 0 4px #f28a2e33;vertical-align:middle}
+.anatomy-part-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.anatomy-caption{grid-column:2;grid-row:2;justify-self:end;width:min(360px,100%);padding:20px 22px;border:1px solid var(--a-line);border-radius:16px;background:#0a1823b8;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.anatomy-counter{display:block;font-size:10px;font-weight:750;letter-spacing:.14em;text-transform:uppercase;color:var(--a-orange)}
+.anatomy-caption h3{color:#fff;font-size:21px;margin-top:9px;letter-spacing:-.02em}
+.anatomy-caption p{color:#a9bdca;font-size:12px;line-height:1.7;margin-top:8px;min-height:3.4em}
+.anatomy-hint{position:absolute;left:50%;bottom:5vh;transform:translateX(-50%);display:flex;align-items:center;gap:10px;font-size:10px;letter-spacing:.08em;color:#7f97a8;white-space:nowrap;transition:opacity .4s}
+.anatomy-hint i{font-style:normal;opacity:.5}
+.anatomy.has-active .anatomy-hint{opacity:0}
+.anatomy-mouse{width:14px;height:22px;border:1.5px solid #7f97a8;border-radius:8px;position:relative}
+.anatomy-mouse:after{content:'';position:absolute;left:50%;top:4px;width:2px;height:5px;margin-left:-1px;border-radius:2px;background:#7f97a8;animation:anatomy-wheel 1.6s ease-in-out infinite}
+@keyframes anatomy-wheel{0%{transform:translateY(0);opacity:1}70%{transform:translateY(7px);opacity:0}100%{opacity:0}}
+.anatomy-note{position:absolute;right:0;bottom:calc(5vh - 22px);font-size:9px;color:#5f7788}
+.anatomy-pin{position:absolute;left:0;top:0;z-index:2;margin:-38px 0 0 -16px;width:32px;height:24px;display:grid;place-items:center;border-radius:12px;background:var(--a-orange);color:#14100b;font-size:10px;font-weight:800;letter-spacing:.06em;pointer-events:none;opacity:0;transition:opacity .3s}
+.anatomy-pin:after{content:'';position:absolute;left:50%;top:100%;width:1px;height:12px;background:var(--a-orange)}
+.anatomy--live.has-active .anatomy-pin{opacity:1}
+
+@media(max-width:900px){.anatomy-ui{grid-template-columns:minmax(220px,260px) 1fr;gap:0 20px}.anatomy-parts button{min-height:36px;font-size:12px}}
+@media(max-width:650px){
+  .anatomy{height:420vh;margin-top:40px}
+  .anatomy-ui{display:flex;flex-direction:column;justify-content:flex-start;padding:calc(74px + 18px) 0 14px}
+  .anatomy-caption{margin-top:auto}
+  .anatomy-copy{align-self:auto}
+  .anatomy h2{font-size:26px}
+  .anatomy .eyebrow{margin-bottom:10px}
+  .anatomy-parts{display:none}
+  .anatomy-caption{width:100%;padding:16px 18px;border-radius:14px}
+  .anatomy-caption h3{font-size:18px}
+  .anatomy-caption p{font-size:12px;min-height:5.1em}
+  .anatomy-hint{bottom:auto;top:calc(74px + 104px);font-size:9px}
+  .anatomy-note{position:static;margin-top:8px;text-align:center}
+  .anatomy-pin{margin-top:-34px}
+}
+/* static fallback: no WebGL / reduced motion / script failed */
+.anatomy--static{height:auto}
+.anatomy--static .anatomy-sticky{position:relative;height:auto;min-height:0}
+.anatomy--static .anatomy-poster{display:block;position:relative}
+.anatomy--static .anatomy-poster img{height:auto;width:min(960px,100%);margin:0 auto;padding-top:40px}
+.anatomy--static .anatomy-canvas,.anatomy--static .anatomy-hint,.anatomy--static .anatomy-pin,.anatomy--static .anatomy-caption{display:none}
+.anatomy--static .anatomy-ui{display:block;height:auto;padding:56px 0 40px}
+.anatomy--static .anatomy-parts{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 32px}
+.anatomy--static .anatomy-part-text{position:static;width:auto;height:auto;clip:auto;white-space:normal;color:#a9bdca;font-size:12px;padding:0 0 14px 36px;margin-top:-4px}
+.anatomy--static .anatomy-note{position:static;display:block;margin-top:16px}
+@media(prefers-reduced-motion:reduce){.anatomy-mouse:after{animation:none}}

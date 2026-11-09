@@ -148,3 +148,28 @@
     displayPanel(window.location.hash.slice(1) || 'overview', false);
   }
 })();
+
+/* «Устройство дрона»: the 3D bundle is loaded only when the section approaches,
+   and only where WebGL and motion are available; otherwise a static poster is shown. */
+(() => {
+  'use strict';
+  const section = document.querySelector('[data-anatomy]');
+  if (!section) return;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let webgl = false;
+  try { const c = document.createElement('canvas'); webgl = !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (_) { webgl = false; }
+  if (reduce || !webgl) { section.classList.add('anatomy--static'); return; }
+  const load = () => {
+    if (section.dataset.loading) return;
+    section.dataset.loading = '1';
+    const script = document.createElement('script');
+    script.src = 'assets/anatomy/pq650-anatomy.js';
+    script.async = true;
+    script.onerror = () => section.classList.add('anatomy--static');
+    document.body.append(script);
+  };
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(entries => { if (entries.some(e => e.isIntersecting)) { io.disconnect(); load(); } }, { rootMargin: '900px 0px' });
+    io.observe(section);
+  } else load();
+})();
