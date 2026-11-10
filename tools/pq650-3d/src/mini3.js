@@ -4,6 +4,12 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+
+const GOLD = 0xf7bd03; // DQB accent light
 
 const MODEL_SRC = 'assets/anatomy/mini3-model.js?v=20261109b'; // GLB embedded as base64 (works from file:// too)
 const ARMS = ['LF', 'RF', 'LB', 'RB'];
@@ -66,17 +72,23 @@ function init(section, gltf) {
   const capText = section.querySelector('[data-anatomy-text]');
   const pin = section.querySelector('.anatomy-pin');
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMappingExposure = 0.95;
 
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
   pmrem.dispose();
-  const key = new THREE.DirectionalLight(0xffffff, 1.2); key.position.set(4, 9, 6); scene.add(key);
-  const rim = new THREE.DirectionalLight(0xf2a35e, 0.9); rim.position.set(-7, 3, -6); scene.add(rim);
+  // cinematic rig: soft warm key from above + two gold rim lights kept behind the drone
+  const key = new THREE.DirectionalLight(0xfff3dc, 0.8); scene.add(key);
+  const rimL = new THREE.DirectionalLight(GOLD, 6.0); scene.add(rimL);
+  const rimR = new THREE.DirectionalLight(GOLD, 4.6); scene.add(rimR);
+  const under = new THREE.PointLight(GOLD, 1.8, 8, 2); under.position.set(0, -2.1, 0); scene.add(under);
+  const bgCanvas = document.createElement('canvas');
+  const bgTex = new THREE.CanvasTexture(bgCanvas); bgTex.colorSpace = THREE.SRGBColorSpace;
+  scene.background = bgTex;
   const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 200);
 
   // normalise the model: centred, ~7 units wide
@@ -94,6 +106,7 @@ function init(section, gltf) {
   model.position.sub(ctr);
   model.updateMatrixWorld(true);
   const { groups: G, armOf } = classify(model);
+  model.traverse(o => { if (o.isMesh) [].concat(o.material).forEach(m => { if ('envMapIntensity' in m) m.envMapIntensity = 0.42; }); });
 
   // soft shadow
   const gc = document.createElement('canvas'); gc.width = gc.height = 128;
@@ -101,6 +114,20 @@ function init(section, gltf) {
   grad.addColorStop(0, 'rgba(0,0,0,.5)'); grad.addColorStop(1, 'rgba(0,0,0,0)'); gg.fillStyle = grad; gg.fillRect(0, 0, 128, 128);
   const shadow = new THREE.Mesh(new THREE.PlaneGeometry(10, 8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(gc), transparent: true, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = -2.4; scene.add(shadow);
+  // warm pool of light on the "floor"
+  const fc = document.createElement('canvas'); fc.width = fc.height = 128;
+  const fg = fc.getContext('2d'); const fgrad = fg.createRadialGradient(64, 64, 0, 64, 64, 64);
+  fgrad.addColorStop(0, 'rgba(247,189,3,.085)'); fgrad.addColorStop(.45, 'rgba(247,189,3,.03)'); fgrad.addColorStop(1, 'rgba(247,189,3,0)');
+  fg.fillStyle = fgrad; fg.fillRect(0, 0, 128, 128);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(13, 9), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(fc), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -2.42; scene.add(floor);
+
+  // post: gentle bloom on the brightest highlights (lighter on small screens)
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.6, 0.72);
+  composer.addPass(bloom);
+  composer.addPass(new OutputPass());
 
   // explode vectors (world units), converted into each node's parent space
   const out = o => { const a = armOf(o); if (!a) return new THREE.Vector3(); const c = new THREE.Box3().setFromObject(a).getCenter(new THREE.Vector3()); c.y = 0; return c.normalize(); };
@@ -139,8 +166,27 @@ function init(section, gltf) {
     w = sticky.clientWidth; h = sticky.clientHeight;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, w < 700 ? 1.75 : 2));
     renderer.setSize(w, h, false);
+    composer.setPixelRatio(renderer.getPixelRatio());
+    composer.setSize(w, h);
+    bloom.enabled = !(w < 700 && (navigator.hardwareConcurrency || 4) < 6);
     camera.aspect = w / h; camera.updateProjectionMatrix();
+    paintBackground(w < 700);
   }
+  // vignette background in the site's navy with a faint gold glow behind the drone
+  function paintBackground(narrow) {
+    const bw = 480, bh = Math.max(120, Math.round(480 * h / Math.max(w, 1)));
+    bgCanvas.width = bw; bgCanvas.height = bh;
+    const g = bgCanvas.getContext('2d');
+    const cx = (narrow ? 0.5 : 0.66) * bw, cy = 0.5 * bh, r = Math.max(bw, bh) * 0.75;
+    let gr = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+    gr.addColorStop(0, '#173451'); gr.addColorStop(0.45, '#0c1d2f'); gr.addColorStop(1, '#040a11');
+    g.fillStyle = gr; g.fillRect(0, 0, bw, bh);
+    gr = g.createRadialGradient(cx, cy * 1.05, 0, cx, cy * 1.05, r * 0.42);
+    gr.addColorStop(0, 'rgba(247,189,3,.10)'); gr.addColorStop(1, 'rgba(247,189,3,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, bw, bh);
+    bgTex.needsUpdate = true;
+  }
+
   function setActive(i) {
     if (i === active) return;
     active = i;
@@ -186,7 +232,12 @@ function init(section, gltf) {
     else camera.setViewOffset(w, h, -w * 0.17, h * 0.02, w, h);
     pivot.position.y = Math.sin(time * 0.9) * 0.05 * (1 - spread * 0.5);
 
-    renderer.render(scene, camera);
+    // keep the rim lights behind the drone relative to the viewer
+    const back = Math.atan2(-camera.position.x, -camera.position.z);
+    rimL.position.set(Math.sin(back - 0.8) * 9, 2.6, Math.cos(back - 0.8) * 9);
+    rimR.position.set(Math.sin(back + 0.9) * 9, 1.6, Math.cos(back + 0.9) * 9);
+    key.position.set(Math.sin(back + Math.PI - 0.5) * 5, 10, Math.cos(back + Math.PI - 0.5) * 5);
+    composer.render();
 
     if (act >= 0) {
       box.makeEmpty();
@@ -216,7 +267,7 @@ function init(section, gltf) {
   }));
 
   resize(); measure(); prog = target;
-  renderer.render(scene, camera);
+  composer.render();
   section.classList.add('anatomy--live');
   start();
   window.__pqAnatomyDebug = { set: p => { target = prog = p; }, counts: Object.fromEntries(Object.entries(G).map(([k, v]) => [k, v.map(o => o.name)])) };

@@ -1,7 +1,7 @@
 /* ==========================================================================
    «Устройство дрона» — scroll-driven 3D exploded view of PQ650
    ========================================================================== */
-.anatomy{--a-bg:#08131d;--a-ink:#eaf2f7;--a-muted:#8ea6b6;--a-line:#ffffff1a;--a-orange:#f28a2e;position:relative;height:460vh;background:radial-gradient(120% 80% at 70% 45%,#15314a 0%,#0b1a28 45%,var(--a-bg) 80%);color:var(--a-ink);margin-top:56px}
+.anatomy{--a-bg:#08131d;--a-ink:#eaf2f7;--a-muted:#8ea6b6;--a-line:#ffffff1a;--a-orange:#f7bd03;position:relative;height:460vh;background:radial-gradient(120% 80% at 70% 45%,#15314a 0%,#0b1a28 45%,var(--a-bg) 80%);color:var(--a-ink);margin-top:56px}
 .anatomy-sticky{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden}
 .anatomy-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:pan-y;cursor:grab;opacity:0;transition:opacity .6s}
 .anatomy.is-dragging .anatomy-canvas{cursor:grabbing}
@@ -21,7 +21,7 @@
 .anatomy-parts button:hover{color:var(--a-ink)}
 .anatomy-parts li.is-active button{color:#fff}
 .anatomy-parts li.is-active button span{color:var(--a-orange)}
-.anatomy-parts li.is-active button b:after{content:'';display:inline-block;width:6px;height:6px;margin-left:10px;border-radius:50%;background:var(--a-orange);box-shadow:0 0 0 4px #f28a2e33;vertical-align:middle}
+.anatomy-parts li.is-active button b:after{content:'';display:inline-block;width:6px;height:6px;margin-left:10px;border-radius:50%;background:var(--a-orange);box-shadow:0 0 0 4px #f7bd0333;vertical-align:middle}
 .anatomy-part-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .anatomy-caption{grid-column:2;grid-row:2;justify-self:end;width:min(360px,100%);padding:20px 22px;border:1px solid var(--a-line);border-radius:16px;background:#0a1823b8;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .anatomy-counter{display:block;font-size:10px;font-weight:750;letter-spacing:.14em;text-transform:uppercase;color:var(--a-orange)}
