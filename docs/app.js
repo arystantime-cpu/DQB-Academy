@@ -8,24 +8,16 @@
     document.head.append(videoStyles);
     learningPanel.insertAdjacentHTML('afterend', `
       <div class="video-demo" aria-labelledby="video-demo-title">
-        <div class="video-demo-copy">
-          <div class="eyebrow">ПРОТОТИП ВИДЕОУРОКА</div>
-          <h3 id="video-demo-title">Так сложное становится понятным.</h3>
-          <p>Фрагмент показывает будущий стиль объяснений: наглядная анимация, короткие смысловые блоки и спокойная подача материала.</p>
-          <ul>
-            <li>Без перегруженных слайдов</li>
-            <li>Можно пересматривать в своём темпе</li>
-            <li>Доступно с компьютера и телефона</li>
-          </ul>
-          <span>Демонстрационный материал · финальная версия может отличаться</span>
+        <div class="video-demo-heading">
+          <h2 id="video-demo-title">Сложное становится понятным</h2>
+          <p>Первый вводный урок</p>
         </div>
         <div class="video-demo-player">
-          <video autoplay muted loop playsinline controls preload="metadata" aria-label="Прототип анимации для учебного курса">
-            <source src="assets/video/intro-timeline-1.mp4" type="video/mp4">
+          <video playsinline controls preload="metadata" aria-label="Первый вводный видеоурок">
+            <source src="assets/video/first-intro-lesson.mp4" type="video/mp4">
             Ваш браузер не поддерживает встроенное видео.
-            <a href="assets/video/intro-timeline-1.mp4">Скачать прототип</a>.
+            <a href="assets/video/first-intro-lesson.mp4">Скачать видеоурок</a>.
           </video>
-          <span class="video-demo-badge"><i></i> ПРОТОТИП АНИМАЦИИ</span>
         </div>
       </div>`);
   }
