@@ -1,0 +1,407 @@
+/*
+ * storage.js: the track library in local storage, autosave, and the file
+ * import and export.
+ *
+ * Two keys, both versioned, both namespaced under webfpv.trackbuilder so
+ * nothing here can collide with the simulator's own settings key:
+ *
+ *   webfpv.trackbuilder.library.v1   every saved track, by id
+ *   webfpv.trackbuilder.autosave.v1  the working track, whether saved or not
+ *
+ * The autosave is what makes a refresh safe. It is written on a short timer
+ * after every edit rather than on every edit, because serialising a track on
+ * each mouse move is the one place this tool could be made to feel slow.
+ *
+ * Every read goes through model.normalize, so a hand edited local storage
+ * entry or a file from an older build cannot put the tool in a state it
+ * cannot draw. Every write is wrapped, because private browsing throws on
+ * localStorage.setItem and losing an autosave must never lose the session.
+ *
+ * This file is part of WebFPVSimulator.
+ *
+ * WebFPVSimulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * WebFPVSimulator is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY, without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with WebFPVSimulator. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+import { countElementsByType, formatElementCounts, docModeOf } from './elements.js';
+import { normalize, serialize, toPlain, touch } from './model.js';
+
+const LIBRARY_KEY = 'webfpv.trackbuilder.library.v1';
+
+/*
+ * THE CANVAS, ONE PER CLASS.
+ *
+ * The autosave is the track the builder has open and the track the shell
+ * flies, and a pilot who builds a RaceGOW room and then goes back to a five
+ * inch is not holding the room any more. Two seats, so switching aircraft
+ * switches which track the whole product is holding and switching back gives
+ * it straight back.
+ *
+ * The five inch keeps the original key, so every pilot who has been here
+ * before opens the builder on the track they left in it. The library is NOT
+ * split: a saved track carries its own class and a Load list showing both is
+ * a list of everything this browser has ever built, which is what a library
+ * is for.
+ */
+const AUTOSAVE_KEY = 'webfpv.trackbuilder.autosave.v1';
+const AUTOSAVE_KEY_MICRO = 'webfpv.trackbuilder.autosave.micro.v1';
+/*
+ * THE FREESTYLE MAP'S OWN SEAT. A map and a track are two canvases an author
+ * has at once, the same way a five inch track and a whoop room are, so a map
+ * in progress is never overwritten by a track and never flown as one. The
+ * simulator's built freestyle map (src/maps/built) reads this seat.
+ */
+export const AUTOSAVE_KEY_FREESTYLE = 'webfpv.trackbuilder.autosave.freestyle.v1';
+
+function autosaveKey(cls, mode = 'race') {
+  if (mode === 'freestyle') {
+    return AUTOSAVE_KEY_FREESTYLE;
+  }
+  return (cls ?? activeTrackClass()) === 'micro' ? AUTOSAVE_KEY_MICRO : AUTOSAVE_KEY;
+}
+
+/* readJson and writeJson come from src/share/session.js, which had the same
+ * two functions byte for byte. Private mode and the quota are handled there:
+ * a failed write returns false and the caller tells the user. */
+import { activeTrackClass, readJson, writeJson } from '../share/session.js';
+import { presetsForClass, presetById, isPresetId } from './presets.js';
+import { duplicateTrack } from './model.js';
+
+/*
+ * THE SHIPPED MAPS, handed in by the builder (src/trackbuilder/app.js)
+ * rather than imported here. This file is on the simulator's boot graph
+ * (src/ui/ui.js, src/share/listing.js and src/maps/custom.js import it),
+ * and the shipped maps are Your map's starter yard and the showpiece built
+ * on it, which live with Your map in src/maps/built and stay off the wire
+ * until that world is chosen (scripts/memory-check.js fails a boot that
+ * fetches the starter). The simulator
+ * never lists or opens a map from the library, so it never hands any in
+ * and loses nothing.
+ */
+let shippedMaps = [];
+
+export function shipMaps(docs) {
+  shippedMaps = Array.isArray(docs) ? docs : [];
+}
+
+function shippedMap(id) {
+  return shippedMaps.find((d) => d.id === id) ?? null;
+}
+
+/*
+ * THE SHIPPED FIVE INCH TRACKS, handed in by the builder for the same reason the maps are: they are builder
+ * content (src/trackbuilder/presets5.js), and this file is on the simulator's boot graph. They list under the
+ * canvas of their class beside the RaceGOW set, open as a copy under a fresh id, and cannot be deleted. Returned as
+ * a deep copy, because the caller edits what it is given.
+ */
+let shippedTracks = [];
+
+export function shipTracks(docs) {
+  shippedTracks = Array.isArray(docs) ? docs : [];
+}
+
+function shippedTrack(id) {
+  const found = shippedTracks.find((d) => d.id === id);
+  return found ? JSON.parse(JSON.stringify(found)) : null;
+}
+
+/* ------------------------------------------------------------------ */
+/* The library                                                         */
+/* ------------------------------------------------------------------ */
+
+function readLibrary() {
+  const lib = readJson(LIBRARY_KEY, {});
+  return (lib && typeof lib === 'object' && !Array.isArray(lib)) ? lib : {};
+}
+
+/* Every saved track, newest change first, as summaries rather than whole
+ * documents: the Load dialog only needs a name and a size. */
+export function listTracks(cls = activeTrackClass(), mode = 'race') {
+  const lib = readLibrary();
+  const summarise = (raw, preset) => {
+    const { doc } = normalize(raw);
+    return {
+      id: doc.id,
+      name: doc.name,
+      modifiedUtc: doc.modifiedUtc,
+      mix: formatElementCounts(countElementsByType(doc.elements, doc.trackClass)),
+      sequence: doc.sequence.length,
+      preset,
+      credit: doc.credit,
+      /* Which race canvas it belongs to, so the builder's Load lists a five
+       * inch track on the five inch canvas and a whoop track on the whoop's
+       * (rowsForCanvas in ./words.js). The simulator's Track room reads the
+       * class off the loaded document itself and ignores this. */
+      trackClass: doc.trackClass === 'micro' ? 'micro' : 'full',
+    };
+  };
+  /* A map lists with maps and a track with tracks: the Load list of one
+   * canvas offering the other's documents would load a map into the race
+   * seat. */
+  const mine = Object.values(lib)
+    .filter((raw) => docModeOf(raw) === mode)
+    .map((raw) => summarise(raw, false))
+    .sort((a, b) => String(b.modifiedUtc).localeCompare(String(a.modifiedUtc)));
+  /*
+   * The shipped set, after the pilot's own and only for the class being
+   * built, because a whoop author has no use for a 60 m field's layouts
+   * and the other way round. The class is the DOCUMENT's, passed in by the
+   * builder, not the shell's seat: a hand typed ?class=micro on a browser
+   * seated in the five inch is building a room and wants room presets.
+   *
+   * A preset never enters the library under its own id. loadTrack hands
+   * back a COPY with a fresh trk- id, so the copy saves, exports and
+   * publishes like any other track and the shipped one stays pristine
+   * beside it. That is the whole of the copy on write.
+   *
+   * A map's shipped set is the starter yard and the showpiece, on the
+   * same terms. The yard is what a pilot who has built nothing flies as
+   * Your map, and without its row it was the one map they had flown that
+   * the builder could not open. The showpiece is the yard with a drift
+   * course and a tandem, the map the front door flies.
+   */
+  const stock = (mode === 'freestyle' ? shippedMaps : [...presetsForClass(cls), ...shippedTracks.filter((d) => d.trackClass === cls)])
+    .map((d) => summarise(d, true));
+  return [...mine, ...stock];
+}
+
+export function saveTrack(doc) {
+  touch(doc);
+  const lib = readLibrary();
+  lib[doc.id] = toPlain(doc);
+  return writeJson(LIBRARY_KEY, lib);
+}
+
+export function loadTrack(id) {
+  const lib = readLibrary();
+  if (!lib[id]) {
+    /*
+     * Not saved. It may still be one of the shipped tracks, and a preset
+     * opens as a COPY with its own trk- id and the same name. It used to
+     * open under the preset's id, and that copy could be saved but never
+     * published: the board's validator only accepts trk- and eight hex,
+     * so Put on the board answered "That track has no usable id." Found
+     * by running the board's own validate.js over all six. The copy keeps
+     * the credit, because saving a layout does not make it yours.
+     */
+    const stock = presetById(id) ?? shippedMap(id) ?? shippedTrack(id);
+    return stock ? normalize(duplicateTrack(stock, stock.name)) : null;
+  }
+  return normalize(lib[id]);
+}
+
+export function deleteTrack(id) {
+  const lib = readLibrary();
+  if (!lib[id]) {
+    return false;
+  }
+  delete lib[id];
+  /* Nothing shipped can be deleted, because nothing shipped is ever in the
+   * library: a preset opens as a copy under a new id. */
+  return writeJson(LIBRARY_KEY, lib);
+}
+
+/*
+ * A saved document exactly as the library holds it, or null: what Load's
+ * Undo puts back after a Delete. Not loadTrack, which normalises and hands a
+ * shipped track back as a copy; and put back by restoreTrack rather than
+ * saveTrack, which would stamp it as changed now and move it to the top of
+ * the list it was deleted from.
+ */
+export function savedTrack(id) {
+  const raw = readLibrary()[id];
+  return raw ? JSON.parse(JSON.stringify(raw)) : null;
+}
+
+export function restoreTrack(raw) {
+  if (!raw || typeof raw !== 'object' || !raw.id) {
+    return false;
+  }
+  const lib = readLibrary();
+  lib[raw.id] = raw;
+  return writeJson(LIBRARY_KEY, lib);
+}
+
+/* Whether this browser has a document of its own in the library: what the
+ * builder's storage notice reads to know it has been read once. */
+export function librarySize() {
+  return Object.keys(readLibrary()).length;
+}
+
+export function trackExists(id) {
+  return Boolean(readLibrary()[id]) || isPresetId(id) || Boolean(shippedMap(id)) || Boolean(shippedTrack(id));
+}
+
+/*
+ * KEEP WHAT A SEAT HELD before something replaces it: the one rule for the
+ * builder (keepSeat in ./app.js) and the simulator (seatLocal in
+ * src/ui/ui.js). A document the library does not have goes in as itself.
+ * One the library has, but not as it is now, because it was edited on the
+ * autosave after its last Save, goes in as a copy beside the saved one, so
+ * both versions survive: writing over the saved one would lose the version
+ * the author chose to save. One the library has as it is, or a shipped
+ * track (the seat holds a copy of one under its own id, never the shipped
+ * id), needs nothing. modifiedUtc is not compared, because saveTrack
+ * touches it and the autosave does not.
+ *
+ * Returns { ok, saved }: saved is what was written to the library (the
+ * document or its copy), or null when nothing needed writing, and ok is
+ * false when something needed writing and storage refused it.
+ */
+export function keepDisplaced(doc) {
+  if (!doc) {
+    return { ok: true, saved: null };
+  }
+  const lib = readLibrary();
+  if (!lib[doc.id]) {
+    if (isPresetId(doc.id) || shippedMap(doc.id) || shippedTrack(doc.id)) {
+      return { ok: true, saved: null };
+    }
+    return saveTrack(doc) ? { ok: true, saved: doc } : { ok: false, saved: null };
+  }
+  const plain = (d) => JSON.stringify({ ...toPlain(d), modifiedUtc: '' });
+  if (plain(normalize(lib[doc.id]).doc) === plain(doc)) {
+    return { ok: true, saved: null };
+  }
+  const copy = duplicateTrack(doc, `${doc.name} (unsaved changes)`);
+  return saveTrack(copy) ? { ok: true, saved: copy } : { ok: false, saved: null };
+}
+
+/* ------------------------------------------------------------------ */
+/* Autosave                                                            */
+/* ------------------------------------------------------------------ */
+
+/* Into the seat the DOCUMENT belongs in, read off the document, so an
+ * autosave cannot land in the other class's chair. */
+export function writeAutosave(doc) {
+  const cls = doc && doc.trackClass === 'micro' ? 'micro' : 'full';
+  return writeJson(autosaveKey(cls, docModeOf(doc)), toPlain(doc));
+}
+
+export function readAutosave(cls, mode = 'race') {
+  const raw = readJson(autosaveKey(cls, mode), null);
+  if (!raw) {
+    return null;
+  }
+  return normalize(raw);
+}
+
+export function clearAutosave(cls, mode = 'race') {
+  try {
+    localStorage.removeItem(autosaveKey(cls, mode));
+  } catch (e) {
+    /* nothing to do about it */
+  }
+}
+
+/*
+ * A debounced autosave. The app calls schedule() after every edit; the write
+ * happens once the edits stop.
+ */
+export function makeAutosaver(delayMs = 700) {
+  let timer = null;
+  let latest = null;
+  return {
+    schedule(doc) {
+      latest = doc;
+      if (timer != null) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(() => {
+        timer = null;
+        if (latest) {
+          writeAutosave(latest);
+        }
+      }, delayMs);
+    },
+    flush() {
+      if (timer != null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      if (latest) {
+        writeAutosave(latest);
+      }
+    },
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Files                                                               */
+/* ------------------------------------------------------------------ */
+
+/* The track's name, reduced to something safe on every platform. One rule,
+ * used by the filenames below and matched by scripts/trackgif.js, so a track
+ * exported by the button and by the script lands on the same name. At the
+ * standard animation size, that is: the script puts no size in its own. */
+function slugOf(doc) {
+  return String(doc.name || 'track')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'track';
+}
+
+/* A filename that is recognisably the track and is safe on every platform.
+ * A freestyle map says so in its name: the two are the same format, and a
+ * folder holding both should not need each file opened to tell a map to fly
+ * round from a course to race. */
+export function exportFilename(doc) {
+  return `${slugOf(doc)}.${docModeOf(doc) === 'freestyle' ? 'map' : 'track'}.json`;
+}
+
+/* The edge the animation has always been drawn at, and the one a file carries
+ * no mark for. A file at any other edge says so in its name, so a sharper one
+ * saved beside the standard one is not left to the browser to call "(1)" and
+ * nobody has to open both to tell which is which. One set on the race field
+ * says so too, because the same track on the black stage is another file. */
+export const ANIMATION_EDGE = 512;
+
+export function animationFilename(doc, edge = ANIMATION_EDGE, field = false) {
+  const size = edge === ANIMATION_EDGE ? '' : `-${edge}px`;
+  return `${slugOf(doc)}${size}${field ? '-field' : ''}.gif`;
+}
+
+export function pictureFilename(doc) {
+  return `${slugOf(doc)}.png`;
+}
+
+/* Hand the browser some bytes as a file. Shared because the track document
+ * and the animation want exactly the same dance and only differ in what is
+ * in the blob. */
+export function downloadBlob(data, filename, type) {
+  const blob = new Blob([data], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  /* Revoked on the next turn of the loop: revoking synchronously has raced
+   * the download in more than one browser. */
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function downloadTrack(doc) {
+  downloadBlob(serialize(doc), exportFilename(doc), 'application/json');
+}
+
+export function readFileText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error('could not read the file'));
+    reader.readAsText(file);
+  });
+}

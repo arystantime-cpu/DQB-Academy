@@ -1,0 +1,295 @@
+# diff
+# Betaflight / SITL (SITL) 4.5.1
+#
+# THE DEFAULT TUNE: BETAFLIGHT 4.5.1'S FACTORY TUNE, WITH FIVE SETTINGS
+# CHANGED.
+#
+# Every PID and filter value below is Betaflight 4.5.1's own factory
+# default, which is what a freshly flashed 5 inch quad flies before anyone
+# touches it, except the five under WHAT IS NOT FACTORY. Since Karate race
+# and Precision were removed it is the only tune that ships.
+#
+# Until 2026-09-28 there were no exceptions, and the reason for that still
+# holds for every other line: fly this, change something on the bench, and
+# the difference is the thing you changed. The owner made the exceptions
+# that day, from the board's feel reports. "Slow to answer the stick" is
+# the form's most ticked box, on 23 reports, 11 of them since 24 September,
+# every one flown on this tune with no slider moved; "bounces back after a
+# stop" was ticked on 9, all on this tune and 8 of them stock. The owner's
+# ask: feedforward, a little, on the default tune, and fix the bounce back.
+#
+# npm run feel:response flies this file beside Betaflight's factory tune on
+# every run, with the factory values read out of the module rather than
+# typed, and the numbers below are its output unless they say otherwise:
+# the five inch at its own 1.62 g, Betaflight's default rates, and pads at
+# the rates the reports show.
+#
+# WHAT IS NOT FACTORY, AND WHY.
+#
+# 1. Feedforward a quarter up: simplified_feedforward_gain 125, which is
+#    f_roll 150, f_pitch 156 and f_yaw 150 (factory 100, and 120, 125 and
+#    120). Feedforward pushes on the stick's movement before any error
+#    exists, which is what "slow to answer the stick" is about. A fast flick
+#    now reaches 90 percent of its rate 3 to 5 ms sooner on every pad the
+#    reports show, the rate trails a 2 Hz stick sine by 1.8 to 2.7 ms less,
+#    and the overshoot does not move. It is written as the slider and not
+#    only as F, because `simplified_tuning apply` computes F as Betaflight's
+#    factory F times the sliders: a bare f_roll = 150 would go back to 120
+#    the first time a pilot touched the master on the PIDs screen. The F
+#    values are the ones that command computes at 125, read back from the
+#    module, and the PIDs screen's Stick response slider now starts at 125.
+#
+# 2. iterm_relax_cutoff 10 (factory 15), and
+# 3. iterm_relax RPY_INC (factory RP): the bounce back. Betaflight's I term
+#    remembers every degree the craft runs on past a stop and hands it back
+#    once the craft has stopped, and that is the bounce. Relax holds I back
+#    while the stick is moving. At 15 Hz the hold ends before a full stick
+#    flip has finished stopping, so I learns the tail of every stop, and
+#    factory leaves yaw out of the hold entirely. Feedforward on its own
+#    makes the bounce a little worse, so these two carry item 1 as well.
+#    With all four, a whole full stick roll ends 0.38 degrees back where
+#    factory's ends 1.20, a pitch flip 0.48 where factory's ends 1.62, three
+#    quarter stick 0.60 and 0.55 where factory's end 0.89 and 1.03, and in
+#    Arcade, where the plant's turbulence cannot blur it, a full stick flip
+#    stops moving in half the time.
+#
+#    INC, which holds I back only while it would grow and lets it shrink,
+#    rather than RPY, which holds it either way, because of the pads. A
+#    browser refreshes a radio at 125 to 242 Hz and the shell sends the
+#    module 250 frames a second, so the module is handed repeated frames,
+#    and Betaflight's feedforward reads the first repeat after a movement as
+#    a dropped packet and carries the movement on for one more frame
+#    (calculateFeedforward in fc/rc.c). At the end of a stop that is a frame
+#    too much braking, and I is what takes it back out. RPY stops I doing
+#    that too, and on a 160 to 190 Hz pad its half stick stops came back
+#    further than factory's did. INC leaves I free to take it back.
+#
+#    What that does not reach: on a pad near 180 Hz a half stick roll or
+#    pitch stop still ends a tenth to a fifth of a degree further back than
+#    factory's, with a sharper flick back, about 50 deg/s at its fastest
+#    where factory's is under 40. Fed only the pad's new samples the flick
+#    drops under 20 deg/s, so it lives in the shell's input path, not here;
+#    PROGRESS.md has the probe. And INC's own cost: after a quick bank and
+#    back at 0.3 to 0.6 stick the craft ends 0.3 to 0.9 degrees from where
+#    the stick put it, where factory ends within 0.13, though after the same
+#    at full stick it ends 1.4 to 1.9 off where factory ends 2.1 to 2.5.
+#
+# 4. pidsum_limit_yaw 500 (factory 400). The comment at that line has the
+#    upstream bug it steps past.
+#
+#    Yaw is where 3 and 4 meet: yaw inside the relax hold, and a yaw I term
+#    the anti windup can reach. Together they take the nose's swing back
+#    after a whole yaw turn at half, three quarter and full stick from 2.99,
+#    7.79 and 8.15 degrees to 2.26, 4.64 and 7.34; feedforward moves them by
+#    less than a tenth. What is left is the plant, not the tune: yaw is the
+#    axis with the least authority, a full stick stop from 670 deg/s takes
+#    about 140 ms with the motors at their limits, and no relax setting
+#    covers a stop that long. Yaw P would take more of it, and the PIDs
+#    screen's expert table reaches yaw P, but a tune in simplified mode
+#    cannot keep one: the first slider a pilot moves puts yaw back to
+#    Betaflight's own. A lower yaw rate on the Rates screen would take more,
+#    as the three quarter row, a 390 deg/s turn, shows, and so would
+#    iterm_limit 200 at full stick; neither was taken.
+#
+# 5. iterm_limit 200 (factory 400), on 2026-10-09: the owner asked for
+#    less bounce back after a stop again ("reduce bounce back after stop"),
+#    and a board report the same week said "floppy, bounces back after a
+#    stop". It is the yaw half of the bounce: on a whole yaw turn the yaw I
+#    term reached its cap and handed all of it back at the stop, and 200 is
+#    the value item 3 measured and left untaken. npm run feel:response,
+#    Arcade, the ideal pad, where the controller is all there is: a full
+#    stick yaw turn's swing back 6.98 to 4.11 degrees, at a little over half
+#    the speed (41 deg/s to 23), three quarter stick 4.24 to 4.11. Roll and
+#    pitch do not reach 200 on any stop measured and do not move. It costs
+#    the nose a little more run on past a centred yaw stick, 21.7 degrees to
+#    24.5 on a full turn, and nothing on the flick or the 2 Hz sine.
+#
+#    Taken in the same change and in the plant, not here: propwash halved
+#    (src/native/plant.c, k_propwash). Most of what a pilot reads as a
+#    bounce in Expert is the wash the craft falls through after a stop, so
+#    the two together, Expert on the ideal pad, settle a full stick roll in
+#    52 ms where it took 210, three quarter roll in 76 where it took 842,
+#    and three quarter pitch in 414 where it took 1019.
+#
+#    NOT TAKEN, because the latency rule says it is the owner's word:
+#    iterm_relax_cutoff 8 (item 2's 10). It halves the full stick roll and
+#    pitch bounce again, 0.36 to 0.15 degrees and 0.53 to 0.23, and it
+#    makes the roll rate trail a 2 Hz stick sine 0.1 ms further on every
+#    pad. PROGRESS.md has the tables.
+#
+# What the first four leave alone: propwash, where a throttle chop and punch
+# reads the same to a hundredth of a deg/s; angle mode, which still levels
+# without passing level, 19 to 27 ms sooner; and the flying weights from
+# 0.97 to 2.27 g and the micro's 2.03, where the flick is 5 ms quicker and
+# a full stick flip comes back a quarter or less of what factory's did.
+#
+# To fly Betaflight's factory tune exactly, put eight values back on the
+# Flight controller screen: simplified_feedforward_gain 100, f_roll 120,
+# f_pitch 125, f_yaw 120, iterm_relax RP, iterm_relax_cutoff 15,
+# iterm_limit 400 and pidsum_limit_yaw 400.
+#
+# Provenance: every other value is the one in
+# betaflight/firmware-presets presets/4.5/tune/defaults.txt and
+# presets/4.5/filters/defaults.txt, which are the official statements of
+# what 4.5 defaults are. They are written out in full rather than left
+# implicit so this file can be diffed against the vendored firmware.
+#
+# NO RATES. This file sets no rateprofile at all, and neither does any other
+# tune here. Rates belong to the pilot, not to a tune, and they are chosen in
+# Settings; the shell appends them to whichever tune is loaded. See
+# configs/rates.js. Shipping rates inside a tune is what made the Karate
+# preset, which this build no longer ships, impossible to judge: choosing it
+# changed the tune and the stick authority in one keypress.
+#
+# Airframe: the reference 5 inch of STAGE1.md, 6S, 1900 kV, 0.65 kg.
+#
+# The airframe keys below are STORED, not read. The Stage 1 plant's mass,
+# kV, cell count and rotor size are constants in src/native/plant.c and
+# changing motor_kv here changes nothing about how the craft flies. They
+# are kept so a dump round trips and so the numbers are written down
+# beside the tune that assumes them. This block used to claim the plant
+# read them.
+
+batch start
+
+board_name SITL
+
+# ---- master ----
+
+set motor_kv = 1900
+set motor_poles = 14
+set vbat_max_cell_voltage = 420
+set vbat_min_cell_voltage = 350
+set vbat_warning_cell_voltage = 350
+set battery_capacity = 1300
+set small_angle = 180
+
+# Filters, 4.5 defaults
+set gyro_hardware_lpf = NORMAL
+set gyro_lpf1_type = PT1
+set gyro_lpf1_static_hz = 250
+set gyro_lpf2_type = PT1
+set gyro_lpf2_static_hz = 500
+set gyro_notch1_hz = 0
+set gyro_notch1_cutoff = 0
+set gyro_notch2_hz = 0
+set gyro_notch2_cutoff = 0
+set gyro_lpf1_dyn_min_hz = 250
+set gyro_lpf1_dyn_max_hz = 500
+set gyro_lpf1_dyn_expo = 5
+set simplified_gyro_filter = ON
+set simplified_gyro_filter_multiplier = 100
+
+set dyn_notch_count = 3
+set dyn_notch_q = 300
+set dyn_notch_min_hz = 100
+set dyn_notch_max_hz = 600
+
+set yaw_spin_recovery = AUTO
+set dshot_idle_value = 550
+set mixer_type = LEGACY
+set yaw_motors_reversed = OFF
+
+# ---- profile 0 ----
+profile 0
+
+set pid_at_min_throttle = ON
+set anti_gravity_gain = 80
+set anti_gravity_cutoff_hz = 5
+set anti_gravity_p_gain = 100
+set acc_limit_yaw = 0
+set acc_limit = 0
+
+set iterm_rotation = OFF
+# Not factory (RP, 15 and 400): the header, items 2, 3 and 5.
+set iterm_relax = RPY_INC
+set iterm_relax_type = SETPOINT
+set iterm_relax_cutoff = 10
+set iterm_windup = 85
+set iterm_limit = 200
+set pidsum_limit = 500
+
+# 500, not the factory 400. 400 is 40 percent of the mixer's yaw range, and
+# Betaflight's anti windup is driven only by getMotorMixRange against
+# iterm_windup, so a yaw axis clipped at 40 percent can never on its own
+# reach the 85 percent windup point: the I term keeps integrating for the
+# whole time the axis is saturated. Round 23 in PROGRESS.md measured it on a
+# full stick yaw step, yaw I pinned at its 400 cap for 225 ms, and found the
+# discontinuity between 450 and 480 that betaflight/betaflight issue 13486
+# reports, open since March 2024. At 500 the windup point is reachable and
+# the anti windup does its job on yaw. On its own, on this weight, that
+# takes a full stick yaw stop from 164 ms to 141 and its swing back from
+# 8.15 degrees to 7.48; with the rest of this tune beside it, three quarter
+# stick, where the I term used to pin as well, goes from 7.79 to 4.64.
+#
+# Until 2026-09-28 this line flew the bug on purpose, because the file's
+# whole job was to be what a freshly flashed quad flies, the parts of that
+# which are wrong included. The header says why that changed.
+set pidsum_limit_yaw = 500
+
+set throttle_boost = 5
+set throttle_boost_cutoff = 15
+
+# The three F values are not factory (120, 125, 120): they are what
+# simplified_feedforward_gain 125 below computes. The header, item 1.
+set p_roll = 45
+set i_roll = 80
+set d_roll = 40
+set f_roll = 150
+set p_pitch = 47
+set i_pitch = 84
+set d_pitch = 46
+set f_pitch = 156
+set p_yaw = 45
+set i_yaw = 80
+set d_yaw = 0
+set f_yaw = 150
+
+set d_min_roll = 30
+set d_min_pitch = 34
+set d_min_yaw = 0
+set d_max_gain = 37
+set d_max_advance = 20
+
+set abs_control_gain = 0
+set use_integrated_yaw = OFF
+
+set thrust_linear = 0
+set transient_throttle_limit = 0
+set feedforward_transition = 0
+set feedforward_max_rate_limit = 90
+
+set dyn_idle_min_rpm = 0
+
+set simplified_pids_mode = RPY
+set simplified_master_multiplier = 100
+set simplified_i_gain = 100
+set simplified_d_gain = 100
+set simplified_pi_gain = 100
+set simplified_dmax_gain = 100
+# Not factory (100): the header, item 1.
+set simplified_feedforward_gain = 125
+set simplified_pitch_d_gain = 100
+set simplified_pitch_pi_gain = 100
+
+set tpa_mode = D
+set tpa_rate = 65
+set tpa_breakpoint = 1350
+set tpa_low_rate = 20
+set tpa_low_breakpoint = 1050
+set tpa_low_always = OFF
+
+set dterm_lpf1_dyn_min_hz = 75
+set dterm_lpf1_dyn_max_hz = 150
+set dterm_lpf1_dyn_expo = 5
+set dterm_lpf1_type = PT1
+set dterm_lpf1_static_hz = 75
+set dterm_lpf2_type = PT1
+set dterm_lpf2_static_hz = 150
+set dterm_notch_hz = 0
+set dterm_notch_cutoff = 0
+set yaw_lowpass_hz = 100
+set simplified_dterm_filter = ON
+set simplified_dterm_filter_multiplier = 100
+
+batch end

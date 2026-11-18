@@ -1,0 +1,58 @@
+<!doctype html>
+<!--
+  The title shot, and nothing else. Map cards and the public board iframe
+  this page so a thumbnail is the same renderer, the same camera and the
+  same world as the game. The first visit records one camera cycle; later
+  visits play that clip and never build the world again.
+
+  This file is part of WebFPVSimulator.
+
+  WebFPVSimulator is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or (at
+  your option) any later version.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebFPV, orbit</title>
+    <!--
+      THE SCRIPTS OF THE DEPLOY THIS PAGE CAME FROM, ALWAYS: see src/fresh.js.
+      The board frames this page, so a stale orbit.js here is a board sheet
+      flying the wrong world. The page's first module is orbit.js, beside it.
+    -->
+    <script>
+      (() => {
+        const t = Date.parse(document.lastModified);
+        /* With no Last-Modified, as on a checkout, the browser reports the
+         * current time: that is no stamp, and the page loads unversioned. */
+        const stamp = t > 0 && Math.abs(Date.now() - t) > 5000 ? Math.round(t / 1000).toString(36) : '';
+        document.write(`<script src="../fresh.js${stamp ? `?d=${stamp}` : ''}" data-entry="src/share/orbit.js"><\/script>`);
+      })();
+    </script>
+    <link rel="icon" href="data:," />
+    <style>
+      html, body {
+        margin: 0; width: 100%; height: 100%; overflow: hidden;
+        background: #141c16;
+      }
+      #view, .orbit-clip {
+        display: block; position: fixed; inset: 0;
+        width: 100%; height: 100%;
+        object-fit: cover; background: #141c16;
+      }
+      #status {
+        position: fixed; inset: 0; display: grid; place-items: center;
+        padding: 12px; box-sizing: border-box; text-align: center;
+        color: #8a9a86; font: 13px/1.45 system-ui, sans-serif;
+        pointer-events: none;
+      }
+      #status.gone { display: none; }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div id="status">Loading the world.</div>
+  </body>
+</html>

@@ -1,0 +1,281 @@
+/*
+ * stamps.js: the STF marks this browser has found, one stamp per map.
+ *
+ * Every freestyle map carries the STF mark somewhere (FREESTYLE-MAPS-PLAN.md
+ * section 9), and finding it puts a stamp on that map's card on the
+ * Freestyle screen that stays in this browser. This is where the stamp is
+ * kept. It is a record of something the pilot did, like a pilot's name,
+ * so it lives in local storage and never leaves the machine: nothing here
+ * talks to the network.
+ *
+ * THE RECORD is one versioned key, STAMPS_KEY, holding
+ *
+ *   { [key]: { atUtc } }
+ *
+ * where key is the map's `egg.key` (src/maps/README.md): 'city' for the
+ * town, 'built:starter' for Hibari Yard, 'built:' and the document's id for
+ * a map somebody built, and a partner's mark keys the same with '#' and the
+ * partner's slug ('city#gds', `marks` in src/maps/README.md). No card shows
+ * a partner's stamp; it is kept so a find is a find once, the way the STF
+ * mark's was. atUtc is when this browser first found it. A
+ * second find keeps the first date, because the stamp is for having found
+ * it, and the first time is the one worth keeping.
+ *
+ * STORAGE CAN SAY NO (a private window, a full quota, a policy), and a pilot
+ * who found the mark in one of those still found it. So every read and
+ * write is in a try, nothing here throws, and a stamp that could not be
+ * written is kept in memory for the life of the page: the card shows it
+ * until the page is closed, which is as long as that browser allows.
+ *
+ * This file is part of WebFPVSimulator.
+ *
+ * WebFPVSimulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * WebFPVSimulator is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY, without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with WebFPVSimulator. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+import { readAutosave } from '../trackbuilder/storage.js';
+import { docModeOf } from '../trackbuilder/elements.js';
+import { HOUSE_DOC_ID, HEADS_DOC_ID, BARDWELL_DOC_ID, WAREHOUSE_DOC_ID, GOATS_DOC_ID, SUNNY_DOC_ID, FACTORY_DOC_ID, DRIFT_DOC_ID, BALL_DOC_ID, MOTO_DOC_ID, DOME_DOC_ID, CEDAR_DOC_ID, TOWERS_DOC_ID, ALPS_DOC_ID, OFFICE_DOC_ID, KAZA_DOC_ID, SANA_DOC_ID, SHIOKAZE_DOC_ID, RALLY_DOC_ID, FMX_DOC_ID, AIRFIELD_DOC_ID, HOTARU_DOC_ID, FEST_DOC_ID, HAIKYO_DOC_ID } from '../maps/registry.js';
+import { DOCK_DOC_ID, EKIMAE_DOC_ID } from '../maps/registry.js';
+import { DUNES_DOC_ID } from '../maps/registry.js';
+import { TOUGE_DOC_ID } from '../maps/registry.js';
+import { ARCTIC_DOC_ID } from '../maps/registry.js';
+import { HAYATE_DOC_ID } from '../maps/registry.js';
+import { PARK_DOC_ID, YUME_DOC_ID } from '../maps/registry.js';
+import { CONCERT_DOC_ID } from '../maps/registry.js';
+import { SCHOOL_DOC_ID } from '../maps/registry.js';
+
+export const STAMPS_KEY = 'webfpv.stf.stamps.v1';
+
+/* Stamps this page could not store, so they still show until it closes. */
+const unstored = new Map();
+
+/* A key is the map's egg key, a short string; anything else is not one. */
+function isKey(key) {
+  return typeof key === 'string' && key.length > 0 && key.length <= 200;
+}
+
+/* The stored record, with anything that is not a stamp left out, so a
+ * hand edited or half written value reads as fewer stamps rather than as
+ * an error. */
+function readRecord() {
+  let raw = null;
+  try {
+    raw = JSON.parse(localStorage.getItem(STAMPS_KEY) || 'null');
+  } catch (e) {
+    return {};
+  }
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return out;
+  }
+  for (const [key, v] of Object.entries(raw)) {
+    if (isKey(key) && v && typeof v === 'object' && typeof v.atUtc === 'string') {
+      out[key] = { atUtc: v.atUtc };
+    }
+  }
+  return out;
+}
+
+/* This browser's stamp for a map's egg key, { atUtc }, or null. */
+export function stampFor(key) {
+  if (!isKey(key)) {
+    return null;
+  }
+  const stored = readRecord()[key];
+  if (stored) {
+    return stored;
+  }
+  return unstored.get(key) ?? null;
+}
+
+/* Which of these keys this browser has stamped, from one read of the
+ * record: a map with a hundred stickers asks about every one of them when
+ * it is first flown, and stampFor would read and parse it a hundred
+ * times. */
+export function stampedAmong(keys) {
+  const record = readRecord();
+  const out = new Set();
+  for (const key of keys) {
+    if (isKey(key) && (record[key] || unstored.has(key))) {
+      out.add(key);
+    }
+  }
+  return out;
+}
+
+/*
+ * Stamp a map as found. Returns true when the stamp is in storage, false
+ * when storage refused it and it is only held for this page. A map already
+ * stamped keeps its first date and answers true.
+ */
+export function writeStamp(key, atUtc = new Date().toISOString()) {
+  if (!isKey(key)) {
+    return false;
+  }
+  const record = readRecord();
+  if (record[key]) {
+    return true;
+  }
+  const stamp = { atUtc: String(atUtc) };
+  record[key] = stamp;
+  try {
+    localStorage.setItem(STAMPS_KEY, JSON.stringify(record));
+    unstored.delete(key);
+    return true;
+  } catch (e) {
+    if (!unstored.has(key)) {
+      unstored.set(key, stamp);
+    }
+    return false;
+  }
+}
+
+/*
+ * The egg key of the world a card would fly, without building it, for the
+ * stamp on the Freestyle screen: 'city' for the town, Nick Burns' house by
+ * its fixed document's id (the registry's HOUSE_DOC_ID, which is the id
+ * src/maps/house/yard.js gives it), Heads' house by its own (HEADS_DOC_ID,
+ * src/maps/heads/yard.js), Joshua Bardwell's by its (BARDWELL_DOC_ID,
+ * src/maps/bardwell/yard.js), and for Your map the key its map would
+ * give it, or null for anything that carries no mark.
+ *
+ * Your map flies what chooseDocument in src/maps/built/index.js picks: the
+ * freestyle seat when it holds a freestyle map with something on it, the
+ * starter otherwise, and stfKey in src/maps/built/egg.js keys the two
+ * 'built:' and the document's id, and 'built:starter'. Neither file can be
+ * imported here, because this is read at boot and both belong to a world
+ * that stays off the wire until it is chosen (npm run lint:memory), so the
+ * rule is restated from the seat alone, as clipKeyForMap in
+ * ./orbitcache.js does for the orbit clip. Change the three together.
+ */
+export function stampKeyForMap(mapId) {
+  if (mapId === 'city') {
+    return 'city';
+  }
+  if (mapId === 'house') {
+    return `built:${HOUSE_DOC_ID}`;
+  }
+  if (mapId === 'heads') {
+    return `built:${HEADS_DOC_ID}`;
+  }
+  if (mapId === 'bardwell') {
+    return `built:${BARDWELL_DOC_ID}`;
+  }
+  if (mapId === 'warehouse') {
+    return `built:${WAREHOUSE_DOC_ID}`;
+  }
+  if (mapId === 'goats') {
+    return `built:${GOATS_DOC_ID}`;
+  }
+  if (mapId === 'sunny') {
+    return `built:${SUNNY_DOC_ID}`;
+  }
+  if (mapId === 'park') {
+    return `built:${PARK_DOC_ID}`;
+  }
+  if (mapId === 'yume') {
+    return `built:${YUME_DOC_ID}`;
+  }
+  if (mapId === 'factory') {
+    return `built:${FACTORY_DOC_ID}`;
+  }
+  if (mapId === 'drift') {
+    return `built:${DRIFT_DOC_ID}`;
+  }
+  if (mapId === 'ball') {
+    return `built:${BALL_DOC_ID}`;
+  }
+  if (mapId === 'moto') {
+    return `built:${MOTO_DOC_ID}`;
+  }
+  if (mapId === 'ekimae') {
+    return `built:${EKIMAE_DOC_ID}`;
+  }
+  if (mapId === 'dunes') {
+    return `built:${DUNES_DOC_ID}`;
+  }
+  if (mapId === 'dock') {
+    return `built:${DOCK_DOC_ID}`;
+  }
+  if (mapId === 'alps') {
+    return `built:${ALPS_DOC_ID}`;
+  }
+  if (mapId === 'towers') {
+    return `built:${TOWERS_DOC_ID}`;
+  }
+  if (mapId === 'dome') {
+    return `built:${DOME_DOC_ID}`;
+  }
+  if (mapId === 'shiokaze') {
+    return `built:${SHIOKAZE_DOC_ID}`;
+  }
+  if (mapId === 'touge') {
+    return `built:${TOUGE_DOC_ID}`;
+  }
+  if (mapId === 'cedar') {
+    return `built:${CEDAR_DOC_ID}`;
+  }
+  if (mapId === 'office') {
+    return `built:${OFFICE_DOC_ID}`;
+  }
+  if (mapId === 'kaza') {
+    return `built:${KAZA_DOC_ID}`;
+  }
+  if (mapId === 'sana') {
+    return `built:${SANA_DOC_ID}`;
+  }
+  if (mapId === 'rally') {
+    return `built:${RALLY_DOC_ID}`;
+  }
+  if (mapId === 'fmx') {
+    return `built:${FMX_DOC_ID}`;
+  }
+  if (mapId === 'airfield') {
+    return `built:${AIRFIELD_DOC_ID}`;
+  }
+  if (mapId === 'hotaru') {
+    return `built:${HOTARU_DOC_ID}`;
+  }
+  if (mapId === 'fest') {
+    return `built:${FEST_DOC_ID}`;
+  }
+  if (mapId === 'arctic') {
+    return `built:${ARCTIC_DOC_ID}`;
+  }
+  if (mapId === 'haikyo') {
+    return `built:${HAIKYO_DOC_ID}`;
+  }
+  if (mapId === 'hayate') {
+    return `built:${HAYATE_DOC_ID}`;
+  }
+  if (mapId === 'concert') {
+    return `built:${CONCERT_DOC_ID}`;
+  }
+  if (mapId === 'school') {
+    return `built:${SCHOOL_DOC_ID}`;
+  }
+  if (mapId !== 'built') {
+    return null;
+  }
+  try {
+    const saved = readAutosave('full', 'freestyle');
+    const doc = saved && saved.doc;
+    if (doc && docModeOf(doc) === 'freestyle' && doc.elements.length > 0) {
+      return `built:${doc.id ? doc.id : ''}`;
+    }
+  } catch (e) {
+    /* Unreadable: the map flies the starter, and so does its stamp. */
+  }
+  return 'built:starter';
+}

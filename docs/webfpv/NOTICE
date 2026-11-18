@@ -1,0 +1,388 @@
+# NOTICE
+
+WebFPVSimulator as a whole is distributed under the GNU General Public
+License version 3 or later. See LICENSE.
+
+This file records third party material incorporated into the combined work,
+the licence it arrived under, and where it came from. MIT into GPLv3 is a one
+way fit: the MIT material may be incorporated, the combined work ships under
+GPLv3, and the MIT copyright notice and permission notice travel with the
+copied files. Nothing here is relicensed, and no MIT file has had a GPLv3
+header pasted onto it.
+
+## sakura-crossing
+
+    Upstream    https://github.com/kenton-gmi/sakura-crossing
+    Commit      de01898e89c7f6ab3fad93fa802f0f5ac66fbd81
+    Licence     MIT, Copyright (c) 2026 Kenton Wang
+    Vendored at src/maps/city/vendored/
+    Files       59 JavaScript source files, changed as recorded below
+    Licence text travels with them at src/maps/city/vendored/LICENSE
+
+The 59 files are exactly the transitive import closure of the three entry
+points the freestyle city map uses: `src/world/index.js` (57 files),
+`src/core/post.js` and `src/core/sky.js`. Neither `src/core/audio.js`,
+`src/core/player.js`, `src/core/hud.js`, `src/main.js` nor `src/world/ebike.js`
+is on that path, so no upstream music, walker, interface or entry point is
+incorporated, and the 3.9 MB music mp3 in the upstream repository is not
+vendored.
+
+Five of the 59 city files carry an interface change recorded as a diff
+beside the tree (below). They are not the only files that differ from
+upstream: measured on 2026-09-26 against de01898, 46 of the 59 differ, almost
+all of it the town thinning and freestyle collider work of August and
+September (dressing stripped, colliders added or made flush), which
+PROGRESS.md describes change by change rather than as diff files.
+
+  * `world/index.js` carries the four line change recorded in full at
+    `src/maps/city/vendored/PATCH-world-index.diff`, which makes the planet
+    bake optional so the city can be taken in its flat authoring. The change
+    adds a parameter with the upstream behaviour as its default, so calling
+    `buildWorld(scene)` still does exactly what it does upstream. It also
+    carries the town thinning pass of 2026-08-26, which is a set of edits to
+    the town's own composition rather than to its interface: dressing removed,
+    planting thinned. Those are described in PROGRESS.md rather than in a diff
+    file, because a diff against upstream would be the wrong record for a
+    change to what the town contains.
+  * `core/toon.js` carries the one line change recorded at
+    `src/maps/city/vendored/PATCH-core-toon.diff`, which drops `flatShading`.
+  * `world/petals.js` carries the three line change recorded at
+    `src/maps/city/vendored/PATCH-world-petals.diff`, which gives its
+    instanced meshes the names `petalField` and `fallenPetal`. Every other
+    instanced set in the town is named (`sakuraCanopy0`, `groveCanopy1`,
+    `hillTuft`, `lakeReed`); these three were the exception, and two passes
+    of ours read mesh names to decide what a drawn thing means. Nothing about
+    what is drawn changes.
+  * `world/vehicles.js` carries the change recorded at
+    `src/maps/city/vendored/PATCH-world-vehicles.diff`: `setVehicleModel`,
+    a hook through which a host draws every vehicle makeVehicle is asked for,
+    unset by default, so upstream's own drawing is what runs when nothing is
+    registered. `src/maps/city/index.js` registers `src/art/cars.js`, our
+    GPLv3 car model, while the town is built; the vendored table, sizes and
+    placement (SPEC, vehicleSize, parkVehicle) are untouched. It replaces the
+    `wheels: false` option Stage E added, which nothing uses now.
+  * `world/props.js` carries the same hook for the kei truck,
+    `setKeiTruckModel`, recorded at
+    `src/maps/city/vendored/PATCH-world-props.diff`, so the truck at the
+    crossing, which the town builds with makeKeiTruck directly, is drawn by
+    the same model as the parked ones.
+
+The line above used to read "fifty eight of the 59 city files are byte
+identical", which stopped being true when `core/toon.js` was patched and was
+never corrected.
+
+Everywhere else our shell needs different behaviour from a vendored class, it
+subclasses or wraps it in our own GPLv3 code under `src/maps/city/` rather
+than editing the vendored copy, so an upstream update is a re-copy plus one
+patch rather than a merge.
+
+## The WebFPV slap pack, as the whoop room's wall art
+
+    Upstream    https://webfpv.org/stickers/, the landing page repository's
+                stickers/index.html, which is the pack's copy of record
+    Licence     GPLv3, this project's own work
+    Generated   assets/wallart/atlas.webp and src/art/wallart-atlas.js,
+                by scripts/wallart.js (npm run gen:wallart)
+
+The atlas is a picture: eleven posters and banners composed around the pack's
+stickers, laid out in headless Chromium and screenshotted. The pack sets its
+type in Zen Kaku Gothic New and Caveat Brush, which it embeds as subsetted
+faces under the SIL Open Font License 1.1, and its WEBFPV wordmarks are this
+project's own lettering (src/ui/lettering.js) set on Zen Kaku Gothic New. No
+font file is copied into this repository: the generator uses the pack's own
+font block to lay the art out and keeps only the rendered pixels, and the OFL
+governs the font software, not images made with it.
+
+## The yard track's floor marks
+
+    Files       assets/yardtrack/neos.webp, assets/yardtrack/racegow6.webp
+    Licence     NOT GPLv3. Neo's UV Creations' logo and the RaceGOW6 logo are their
+                owners' marks.
+
+The two pictures painted on the floor of RaceGOW6 Track 4 where it stands in
+the house maps' yards (src/maps/yardtrack/). They are the two ground logos the
+track's author published with it on the board (trk-eb699343), decoded from
+that document and saved as WebP, unchanged but for the format, and are here to
+paint that track as published and for nothing else.
+
+## The partners' marks
+
+    Files       assets/partners/, two per partner, named in
+                src/partners/roster.js
+    Licence     NOT GPLv3. Each mark is its owner's trade mark, used with
+                their permission to show them as a WebFPV partner.
+
+Four partners back WebFPV: Global Drone Solutions, Mantis FPV and the West
+Coast Multirotor Club, agreed with the owner in September 2026, and
+weBLEEDfpv, the USA micro drone partner, added on 2026-10-20. Their marks
+are in the repository so that the simulator can paint them into its maps and
+the front door and the board can show them, and for nothing else. The
+project's GPLv3 grant does not extend to them: nobody may take a partner's
+mark from here and use it as their own, and a fork that is not WebFPV has no
+partnership to show.
+
+  * `gds/colour.svg` and `gds/mono.svg` are WebFPV's redraw of the public
+    Global Drone Solutions logo, not files GDS supplied, and each one's
+    title says so. They stand until GDS approves them or sends their own.
+  * `mantisfpv/colour.svg` is the official Mantis FPV 2022 logo as they
+    supplied it. `mantisfpv/mono.svg` is made from it by
+    scripts/partners.js: the same letters in one colour.
+  * `wcmrc/colour.png` is the club's logo as supplied, a 708 by 252 PNG.
+    `wcmrc/mono.png` is made from it by scripts/partners.js, every pixel
+    cream and its transparency kept.
+  * `webleedfpv/colour.png` is the weBLEEDfpv sticker logo (the name over a
+    drone, with "United we Fly, Together"), supplied by the owner on
+    2026-10-20 as an 8000 by 3373 PNG with transparency and scaled to 1200
+    by 506. `webleedfpv/mono.png` is their other mark, the plain black
+    "weBLEEDfpv" wordmark with the drop and ".com", also supplied by the
+    owner, scaled to 1200 wide and turned into cream by its darkness (black
+    is solid, white is clear) once, with a script written for the purpose,
+    not by scripts/partners.js. It is a different shape from the colour mark
+    (roster `monoAspect`) because a row of marks at one height needs the
+    long one.
+  * `mattsflooring/colour.png` is the Matt's Flooring logo as supplied, a
+    499 by 111 PNG. `mattsflooring/mono.png` is made from it by
+    scripts/partners.js, every pixel cream and its transparency kept.
+  * `yourfpv/colour.png` is the YourFPV logo as supplied, a 869 by 570 PNG
+    with transparency. YourFPV is a 6 month paid supporter (October 2026 to
+    April 2027) shown on freestyle maps and the landing page, but not
+    counted in the partners list. `yourfpv/mono.png` is made from it by
+    scripts/partners.js, every pixel cream and its transparency kept.
+  * `369drone/colour.png` is the stacked 369DRONE logo, supplied by 369DRONE
+    (369DRONE Inc., Japan) by email on 2026-11-05 for use in WebFPV, cropped
+    from a 2133 by 2133 sheet to the artwork (428 by 242 with its padding),
+    black ink on transparency, so it sits on the cream field. 369DRONE is a
+    paid one-off supporter shown on freestyle maps and the landing page, not
+    counted in the partners list. `369drone/mono.png` is made from it by
+    scripts/partners.js, every pixel cream and its transparency kept.
+  * `konexdrone/colour.png` is the Konex Drone logo as supplied by the
+    owner on 2026-10-12, a 788 by 316 PNG with transparency, cropped to the
+    artwork and scaled to 640 by 226 with its colours reduced to 32, to keep
+    the load small. Konex Drone is shown on freestyle maps as a sign, not
+    counted in the partners list. `konexdrone/mono.png` is made from it by
+    scripts/partners.js, every pixel cream and its transparency kept.
+  * `dronefactory/colour.png` is the Drone Factory logo as supplied by the
+    owner on 2026-10-26, a 484 by 211 image on white, cropped to the
+    artwork (456 by 175) and turned into black ink on transparency, so it
+    sits on the cream field. Drone Factory is shown on three freestyle
+    maps as a sign, not counted in the partners list.
+    `dronefactory/mono.png` is made from it by scripts/partners.js, every
+    pixel cream and its transparency kept.
+  * `quadconfig/colour.png` is the Quad Configurator logo as supplied by
+    patron Magnus Arge, a 1882 by 400 PNG. `quadconfig/mono.png` is made
+    from it by scripts/partners.js.
+
+The copies in the front door's and the board's repositories are these files,
+copied byte for byte, and this entry covers them there too.
+
+## The 90%er sticker sheets
+
+    Files       assets/stickers/infinityloops/sheet-1.webp and sheet-2.webp
+    Licence     NOT GPLv3. Each sticker is its maker's mark, shown as a
+                tribute on two maps at the owner's request.
+
+The owner's own 90%ers sticker bomb sheet, photographed and given on
+2026-10-15 for a tribute map to the 90%ers on the board's Infinity Loops map
+(trk-e6d139f6), with the 90% patch and the Infinity Loops logos. The stickers
+were cut out of the photograph and packed onto these two sheets, 2048 px
+wide, as webp. They are the two sticker logos the board's copy of that map
+carries, byte for byte, and are in this repository only so that
+src/maps/specials.js can paint them on that map whatever copy of it is flown,
+and so that src/maps/heads/ can paint them on Heads' house, the second map,
+at the owner's ask of 2026-10-20: "make it an official map, ensure the
+sponsors logos are all over it, and also infinity loops and 90%er logos".
+There the Infinity Loops logos and the 90% patch are painted round the house
+and the street, and the 90%ers' own stickers cover the sticker wall in the
+garage. The project's GPLv3 grant does not extend to them.
+
+## Nick Burns' house: his manga render, his logo and the hall's picture
+
+    Files       assets/house/nick-manga.webp and assets/house/nb-sheet.webp
+    Licence     NOT GPLv3. Nick Burns' likeness and his mark, shown on his
+                house's map with his permission, as the owner states it,
+                and a picture the owner supplied for that map.
+
+`nick-manga.webp` is cut from a manga render of Nick Burns that the owner
+made with Grok and gave on 2026-10-19, the second of two (the first, given
+on 2026-10-18, was used until then): seven side views of him walking and
+six of his face, which came cut from the grey they were drawn on. One side
+view is cut at the hips, knees and ankles into a body and the pieces of two
+legs (the far leg's shaded darker), and packed with the six faces into one
+2048 by 1024 atlas, the generator's mark left off. Since the owner asked
+for him in 3D on 2026-10-19, the map builds his model from its own
+geometry and paints the model's texture from this sheet when the map is
+built: the six faces on the front of his head and a face in his speech
+balloon. The leg pieces are no longer drawn. Since the owner asked on
+2026-10-19 for a better likeness, the faces' hair is recoloured toward his
+own salt and pepper, silver at the temples, and their brows lightened; and
+three more pictures are painted onto the sheet beside them, the side, the
+back and the top of his head, shaded from the faces' own colours, with the
+ear of that side view, so the model wears them where it wore that side
+view's head. The top 512 px of `nb-sheet.webp` is Nick Burns' NB logo as
+the owner supplied it on 2026-10-18, a 2048 px JPEG on white, cut from the
+white and set on a die cut white border, 512 px (it was `nb-sticker.webp`
+until 2026-10-23). Under it is the picture the owner gave on 2026-10-23 to
+hang framed in the house's upstairs hall, "put a picture frame on this and
+hang it in the upstairs hall way": a strip of seven copies of one
+photograph of a face, 447 by 65 px, as given, its edge pixels carried out
+round it. Both files are in this repository only so that src/maps/house/
+can draw them on that one map. The project's GPLv3 grant does not extend
+to them.
+
+## Voice clips: Joshua Bardwell and Nick Burns
+
+    Files       assets/voices/jb/*.mp3 and assets/voices/nb/*.mp3
+    Licence     NOT GPLv3. Recordings of Joshua Bardwell and of Nick Burns,
+                supplied by the owner on 2026-10-22, who states that both
+                are happy for them to be used here (2026-10-22).
+
+Eleven short clips of Joshua Bardwell and nine of Nick Burns, given by the
+owner as WAV files and re-encoded here as mono mp3 (the silence trimmed from
+each end, the level evened out). They play on a sticker found on Bardwell's house
+and on Nick Burns' house, and, on Nick's, on a crash, a hit on him, a landing on his table and his own
+lines (src/render/clips.js). The project's GPLv3 grant does not extend to
+them.
+
+## Heads' house: his manga sheet
+
+    File        assets/heads/heads-manga.webp
+    Licence     NOT GPLv3. Heads' likeness, shown on his house's map with
+                his permission, as the owner states it (2026-10-20).
+
+`heads-manga.webp` is packed from a manga sheet of Heads (Infinity Loops)
+that the owner made with Grok and gave on 2026-10-21, cut into pieces: six
+of his faces, his left side, the back of his head, him standing in the
+Infinity Loops tee and one of his tattooed arms, with a white block, in one
+2048 by 768 atlas, each piece's background filled from its edge. The
+packing script is the thread's, not this repository's. It is in this
+repository only so that src/maps/heads/ can draw him on that one map. The
+project's GPLv3 grant does not extend to it.
+
+## Dan: his manga sheet
+
+    File        assets/dan/dan-manga.webp
+    Licence     NOT GPLv3. Dan's likeness, shown in the RaceGOW rooms at the
+                owner's ask (2026-10-21).
+
+`dan-manga.webp` is packed from a manga sheet of Dan that the owner made with
+Grok and gave on 2026-10-21, cut into pieces: six of his faces, his left side,
+the back of his head, and his grey tee and shorts from the front, in one 1536
+by 512 atlas, each piece's background filled from its edge, and a seventh
+face, his stare, painted over a copy of the frown (2026-10-21). The packing script
+is the thread's, not this repository's. It is in this repository only so that
+src/maps/dan/ can draw him in a RaceGOW room. The project's GPLv3 grant does
+not extend to it.
+
+## Thomas More's Shop: his manga sheet
+
+    File        assets/warehouse/thomas-manga.webp
+    Licence     NOT GPLv3. Thomas More's likeness, shown in his shop's map
+                at the owner's ask relaying Thomas's own (2026-11-16).
+
+`thomas-manga.webp` is packed from a manga sheet of Thomas More that the
+owner made with Grok and gave on 2026-11-17, one picture on a grey ground,
+cut into pieces by colour: six of his faces, his left side, the back of his
+head, in one 1536 by 768 atlas, each piece's background filled from its
+edge, the hair and beard turned toward the ginger of his photo. Since
+2026-11-17 ("Let's dress Thomas in a red flanno") the atlas also holds a
+red and black check the packing script paints for his flannel shirt, and
+no longer holds the sheet's picture of him standing in a black hoodie. The packing script is the thread's, not this
+repository's. It is in this repository only so that src/maps/warehouse/ can
+draw him in his shop. The project's GPLv3 grant does not extend to it.
+
+## Pilot avatars
+
+    File        assets/avatar/parts.png
+    Placed by   src/net/avatarparts.js (generated with the atlas)
+    Licence     the owner's own supply, like the owner's other Grok art: to
+                be confirmed by the owner before it is treated as GPLv3
+                grant material.
+
+`parts.png` is packed from six part sheets the owner made with Grok and gave on
+2026-10-25 for flying together: heads, hair, eyes, two of mouths, and clothes
+and extras, drawn as made up people and no real person's likeness. Each part
+was cut from its sheet, scaled to one head width of 300 pixels, its flat fills
+snapped to one colour each so a recoloured part has no grain, and packed into a
+single 2048 by 3913 palette image. The cutting and packing scripts (pack.py,
+and pack2x.py for this scale) are the thread's, kept with the sheets in the
+project's files (multiplayer/avatar-sheets/tools), not in this repository.
+src/net/avatar.js builds a pilot's portrait from these parts and the numbers a
+pilot picks, which are all the board ever stores of it. The shading over them
+(the hair's shine, the fringe's shadow, the flush, the face marks) and the
+wear after the scarf (cat ears, bow, sakura, star clips, the prop beanie's
+propeller, shades and halo) are drawn in code in src/net/avatar.js, and are
+this repository's own, under its licence.
+
+## three.js
+
+    Upstream    https://github.com/mrdoob/three.js
+    Version     r160, loaded from a CDN by the import map src/fresh.js writes
+    Licence     MIT, Copyright (c) 2010-2024 three.js authors
+    Not vendored; fetched at runtime.
+
+## Betaflight
+
+    Upstream    https://github.com/betaflight/betaflight
+    Licence     GPLv3
+    Vendored as a git submodule at vendor/betaflight, unmodified; every
+    change is a patch file in patches/ applied at build time.
+
+The Betaflight logo, assets/credits/betaflight.svg, and the one colour
+assets/credits/betaflight-mono.svg that scripts/partners.js makes from it,
+are the Betaflight project's mark and not under this project's GPLv3 grant.
+Betaflight holds trade marks in the name and the logo in the major markets.
+
+Betaflight gave the owner permission on 2026-09-27 to use the Betaflight
+name and logo in the game, because WebFPV is free. They also said the
+project has nothing to do with WebFPV and will not publicise it. So
+Betaflight is never called a partner, a sponsor or a supporter, and nothing
+says or implies they endorse WebFPV. The logo is used in the game only: in
+the credits, and under "Powered by" at the foot of the loading screen,
+which is a statement about the code, because the control loop is Betaflight
+compiled to WebAssembly. It stood beside the partners on the front door and
+the board for a day and the owner took it off both, because those are the
+pages that publicise the project. The board's credits roll mirrors these
+credits as their fallback, and on the owner's word it names and links
+Betaflight without the logo. The name still appears
+in words wherever a page says what the control loop is, because that is a
+fact about the code and the attribution the licence asks for. The owner
+keeps the message itself.
+
+## Music, and an open question
+
+    Files       assets/music/, fourteen titles as mp3 and webm
+    Named in    src/render/tracks.js
+    Licence     NOT RECORDED. This entry exists to say so.
+
+The music is served with a year long immutable cache and played on the menus
+and in flight, so it is redistributed with the repository like any other file
+in it. The repository is GPLv3. That makes the terms these recordings arrived
+under a thing this file has to state, and nobody wrote them down: tracks.js
+records an id and a display name per title and nothing else, the PROGRESS.md
+entry that introduced them ("recorded tracks replace the generated bed",
+2026-08-19) names no composer, and there is no other record in the tree.
+
+Only the owner can close this, because only the owner knows where they came
+from. Whichever it is, the answer belongs here:
+
+  - the owner's own recordings, in which case say so and they are covered by
+    the project's own GPLv3 grant;
+  - a library or a generator, in which case name it and quote the licence
+    that permits redistribution;
+  - anything that does NOT permit redistribution, in which case the files
+    come out of the repository and the crate loads from somewhere else.
+
+Recorded rather than quietly left, because a silent gap in a licence file is
+the kind of thing that is discovered by somebody else.
+
+## Fractal65 whoop model
+
+    File        assets/whoop/fractal65.bin
+    Source      Fractal65.glb, a 3D model of a 65 mm whoop supplied by the project owner
+    Made by     scripts/bake-fractal65.py (the source file is not in this repository)
+    Licence     the model's author and licence are not recorded yet: to be confirmed by the owner
+
+`fractal65.bin` is a reduction of that model to about 3,000 flat coloured
+triangles, 15 kB. Its shapes follow the source's measurements and nothing of
+its textures is kept. Until the source's licence is known it should be treated
+as the owner's own supply and not as GPLv3 grant material.

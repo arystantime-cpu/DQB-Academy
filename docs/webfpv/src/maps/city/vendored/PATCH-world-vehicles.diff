@@ -1,0 +1,27 @@
+diff --git a/src/maps/city/vendored/world/vehicles.js b/src/maps/city/vendored/world/vehicles.js
+index ef1abf5..58c300d 100644
+--- a/src/maps/city/vendored/world/vehicles.js
++++ b/src/maps/city/vendored/world/vehicles.js
+@@ -270,6 +270,14 @@ function emit(g, parts, matFor, o = {}) {
+  * The generator.
+  * ------------------------------------------------------------------ */
+ 
++/* Who draws the body.  A host may hand every vehicle's drawing to a model
++ * of its own: `fn(o)` is given makeVehicle's options and returns the group,
++ * placed and named as below.  Unset, makeVehicle draws as it always has. */
++let vehicleModel = null;
++export function setVehicleModel(fn) {
++  vehicleModel = fn;
++}
++
+ /**
+  * One parked vehicle.
+  *
+@@ -282,6 +290,7 @@ function emit(g, parts, matFor, o = {}) {
+  *                  for anything the player stands within three metres of.
+  */
+ export function makeVehicle(o = {}) {
++  if (vehicleModel) return vehicleModel(o);
+   if (o.kind === 'keitruck') {
+     return makeKeiTruck({
+       x: o.x, y: o.y, z: o.z, ry: o.ry,

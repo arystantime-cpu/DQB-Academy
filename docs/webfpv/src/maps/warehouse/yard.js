@@ -1,0 +1,138 @@
+/*
+ * yard.js: the document Thomas More's Shop flies in, as ../heads/yard.js
+ * is Heads' house's. Everything the hall is comes from ./warehouse.js as
+ * one structure of its own; this is what the built map's document format
+ * already says well: the plot, the time of day and the ground, where the
+ * pilot starts, and the named gaps.
+ *
+ * Built fresh on every call and the same every call, with a fixed id, so
+ * the map keys its marks and stamps as one place, and the id is the
+ * registry's, where src/share/stamps.js can read it without loading the
+ * hall.
+ *
+ * A gap's position is the middle of its opening's SILL in the document's
+ * metres, `z` the sill's height in the world's, and its yaw the opening's
+ * normal. Each one stands inside its opening with a margin all round, so
+ * the frame a pilot clips is not counted as a pass.
+ *
+ * This file is part of WebFPVSimulator.
+ *
+ * WebFPVSimulator is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * WebFPVSimulator is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY, without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with WebFPVSimulator. If not, see <https://www.gnu.org/licenses/>.
+ */
+import { WAREHOUSE_DOC_ID } from '../registry.js';
+import {
+  S, FIELD_W, FIELD_D, FLOOR0, docAt, OPENINGS, SPAWN, TUBE, TUBES, tubeBore, WINDOW_A, FORKLIFT,
+} from './warehouse.js';
+
+const EAST = 0;
+const NORTH = Math.PI / 2;
+
+export const WAREHOUSE_NAME = "Thomas More's Shop";
+
+/* How far inside its opening a gap's rectangle stands, real metres, each
+ * side and over the sill. */
+const MARGIN = 0.15;
+
+/* A gap across an east west wall's opening (normal north) or a north south
+ * one's (normal east), `m` in from its edges (the tight ones closer). */
+function across(o, name, points, m = MARGIN) {
+  const ew = o.y !== undefined;
+  const p = ew ? docAt((o.x0 + o.x1) / 2, o.y) : docAt(o.x, (o.y0 + o.y1) / 2);
+  const span = ew ? o.x1 - o.x0 : o.y1 - o.y0;
+  return ['gap', p.x, p.y, ew ? NORTH : EAST, {
+    width: S * (span - 2 * m),
+    height: S * (o.h1 - o.h0 - 2 * m),
+  }, { z: S * (o.h0 + m), name, points }];
+}
+
+/* The reel's tight ones (4 November 2026): the cardboard tube, halfway
+ * down it; the forklift's cab, across it behind the seat; one pane of the
+ * white booth's window frame. */
+const TUBE_GAP = { x0: TUBE.x0 + 0.05, x1: TUBE.x1 - 0.05, y: (TUBE.y0 + TUBE.y1) / 2, h0: FLOOR0 + 0.05, h1: FLOOR0 + 0.55 };
+/* One of the veneer tubes over the barani doorway (Thomas More's word of
+ * 16 November 2026), the middle of the first row, end to end. */
+const VENEER_GAP = { ...tubeBore(0, 3), x: (TUBES.x0 + TUBES.x1) / 2 };
+const CAB_GAP = { x0: FORKLIFT.x - 2.2, x1: FORKLIFT.x - 1.55, y: FORKLIFT.y + 0.7, h0: FLOOR0 + 0.95, h1: FLOOR0 + 2.2 };
+const PANE_GAP = {
+  x0: WINDOW_A.x0 + 0.1, x1: (WINDOW_A.x0 + WINDOW_A.x1) / 2 - 0.05, y: WINDOW_A.y + 0.05,
+  h0: FLOOR0 + 0.2, h1: (FLOOR0 + WINDOW_A.h) / 2 - 0.05,
+};
+
+function rows() {
+  const pad = docAt(SPAWN.px, SPAWN.py);
+  return [
+    /* The start: one mat on the slab at the south end of the workshop, by
+     * the hallway's mouth, facing north up it. */
+    ['startPads', pad.x, pad.y, NORTH, { pads: 1, spacing: 1.5, padSize: 0.9 }, { z: S * SPAWN.h }],
+    across(OPENINGS.woodDoor, 'THE WOOD DOOR', 100),
+    across(OPENINGS.backDoor, 'BACK DOOR', 100),
+    across(OPENINGS.lunchDoor, 'LUNCH ROOM DOOR', 250),
+    /* The office area's ways in, open since 16 November 2026: the window
+     * beside the lunch room's door, the other green door in the flat wall,
+     * and the door from the hallway. */
+    across(OPENINGS.lunchWindow, 'LUNCH ROOM WINDOW', 500),
+    across(OPENINGS.greenDoor, 'GREEN DOOR', 250),
+    across(OPENINGS.hallDoor, 'HALLWAY DOOR', 250),
+    across(OPENINGS.frenchDoor, 'FRENCH DOOR', 250),
+    across(OPENINGS.slidingDoor, 'SLIDING DOOR', 250),
+    across(OPENINGS.officeWindow, 'OFFICE WINDOW', 500),
+    /* Thomas's favourite: the wood lined opening under the rolls of
+     * veneer, at the flat wall's corner (his word of 15 November 2026).
+     * The wide opening into the machine room carried its name before. */
+    across(OPENINGS.barani, 'BARANI DOORWAY', 1000),
+    across(OPENINGS.cncDoor, 'CNC DOORWAY', 250),
+    across(OPENINGS.greyDoor, 'GREY DOOR', 250),
+    across(OPENINGS.printOffice, 'PRINT OFFICE', 250),
+    across(PANE_GAP, 'WINDOW PANE', 500),
+    across(CAB_GAP, 'FORKLIFT CAB', 1000, 0.08),
+    across(TUBE_GAP, 'CARDBOARD TUBE', 1000, 0.08),
+    across(VENEER_GAP, 'VENEER TUBE', 1000, 0.08),
+  ];
+}
+
+/* The hall's document, ready for normalize(). */
+export function warehouseDocument() {
+  const elements = rows().map(([type, x, y, yaw, dims, extra = {}], i) => {
+    const el = {
+      id: `el-${i + 1}`,
+      type,
+      name: extra.name ?? '',
+      position: { x, y, z: extra.z ?? 0 },
+      yaw,
+      pitch: 0,
+      yawOverridden: false,
+      dims: { ...dims },
+    };
+    if (extra.points) {
+      el.points = extra.points;
+    }
+    return el;
+  });
+  return {
+    schemaVersion: 3,
+    id: WAREHOUSE_DOC_ID,
+    name: WAREHOUSE_NAME,
+    createdUtc: '2026-10-27T00:00:00Z',
+    modifiedUtc: '2026-10-27T00:00:00Z',
+    trackClass: 'full',
+    mode: 'freestyle',
+    field: { width: FIELD_W, depth: FIELD_D, gridSize: 1 },
+    settings: { tangentScale: 1.1, minCurveRadius: 2.5, samplesPerSegment: 48 },
+    scene: { time: 'noon', ground: 'grass' },
+    branding: { logos: [] },
+    credit: null,
+    elements,
+    sequence: [],
+  };
+}

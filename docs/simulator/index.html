@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Онлайн FPV-симулятор — DQB Academy</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  .simulator-page { background: #f3f7fa; }
+  .simulator { width: min(calc(100% - 48px), 1440px); margin: 24px auto; }
+  .simulator-back { display: inline-block; color: #12688b; font-weight: 750; margin-bottom: 20px; }
+  .simulator-back:hover { text-decoration: underline; }
+  .simulator-panel { background: #fff; border: 1px solid #dfe7ed; border-radius: 24px; padding: clamp(16px, 3vw, 32px); }
+  .simulator h1 { font-size: clamp(28px, 4vw, 48px); margin-bottom: 12px; }
+  .simulator p + p { margin-top: 6px; }
+  .simulator #start { margin-top: 16px; }
+  .simulator iframe { display: block; width: 100%; height: clamp(320px, calc(100dvh - 255px), 850px); margin-top: 18px; border: 0; border-radius: 14px; background: #142d45; }
+  .simulator [hidden] { display: none !important; }
+  .simulator-credit { margin-top: 14px; font-size: 13px; }
+  .simulator-credit a { text-decoration: underline; }
+  @media (max-width: 600px) { .simulator { width: calc(100% - 24px); margin: 12px auto; } }
+</style>
+</head>
+<body class="simulator-page">
+<main class="simulator">
+  <a class="simulator-back" href="../index.html">← На главную</a>
+  <section class="simulator-panel">
+  <h1>Онлайн FPV-симулятор</h1>
+  <p><strong>Задание.</strong> Взлети с синего старта, пройди ворота 1 → 2 → 3 и сядь в зелёной зоне.</p>
+  <p>Карта Field. W/S — газ, A/D — поворот, стрелки — наклон. R — начать заново, Esc — пауза. После запуска кликни по сцене для управления.</p>
+  <button class="button" id="start" type="button">Начать полёт</button>
+  <iframe id="flight" title="Полёт на карте Field в WebFPV" allow="fullscreen; gamepad" allowfullscreen hidden></iframe>
+  <p class="simulator-credit">На основе <a href="https://github.com/Mathew-Harvey/WebFPVSimulator">WebFPV от Mathew Harvey</a> · <a href="../webfpv/LICENSE">GPL-3.0-or-later</a> · <a href="../webfpv/NOTICE">Уведомления</a> · <a href="../webfpv/SOURCE.html">Исходники</a>.</p>
+  </section>
+</main>
+<script>
+  const start = document.querySelector('#start');
+  const flight = document.querySelector('#flight');
+  start.addEventListener('click', () => {
+    flight.src = '../webfpv/index.html?map=custom&craft=5inch&fly=1&dqb=1';
+    flight.hidden = false;
+    start.hidden = true;
+    flight.focus();
+  }, { once: true });
+</script>
+</body>
+</html>
