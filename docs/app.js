@@ -14,9 +14,9 @@
         </div>
         <div class="video-demo-player">
           <video playsinline controls preload="metadata" aria-label="Первый вводный видеоурок">
-            <source src="assets/video/first-intro-lesson.mp4" type="video/mp4">
+            <source src="https://pub-b629a25ea2fb4fbeb7699d5b49d48d1d.r2.dev/first-intro-lesson.mp4" type="video/mp4">
             Ваш браузер не поддерживает встроенное видео.
-            <a href="assets/video/first-intro-lesson.mp4">Скачать видеоурок</a>.
+            <a href="https://pub-b629a25ea2fb4fbeb7699d5b49d48d1d.r2.dev/first-intro-lesson.mp4">Скачать видеоурок</a>.
           </video>
         </div>
       </div>`);
